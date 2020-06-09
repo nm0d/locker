@@ -165,6 +165,7 @@ end
 local hold_time = 0
 local down_time = 0
 local set_down = false
+DEBUG = true
 
 
 
@@ -280,9 +281,7 @@ end
 
 function redraw()
    screen.clear()
-   local crow_connected = crow.connected()
-
-   if not crow_connected then
+   if not crow.connected() and not DEBUG then
       ui_crow_disconnected()
    else
       if grid_state == 1 then
