@@ -207,7 +207,7 @@ function ui_length_info(x,y,j)
    screen.text("steps")
    
    screen.move(x+58, y)
-   screen.text_right(data[j].mult)
+   screen.text_right(data[j].mult/4)
    
    screen.move(x+60, y)
    screen.text("x")
