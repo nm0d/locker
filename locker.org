@@ -4,6 +4,7 @@ right now the connected function does not seem to work. Wait for reply on lines
 * DONE resync button
 Set pos on all tracks to 1
 * DONE track mute 
+* DONE BUG: quickly place many trigs
 * TODO more than 16 steps sequencing
 make focus toogle. reimplement locking for this mode - maybe abstraction helpfull instead of doing it twice..
 * TODO track speed multipliers
@@ -14,7 +15,6 @@ cool times. Current ones seem whacky
 Need 0-10 V
 * TODO new sequencer type: envelope
 Set ADSR with and log/exp with encoders
-* TODO BUG: quickly place many trigs
 * TODO v/8 glide time
 * TODO v/8 lock ui 
 * TODO play/stop buttons

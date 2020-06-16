@@ -47,6 +47,10 @@ grid_state = 0 -- nothing pressed
 -- 5 set seq_type
 -- 6 set focus_track
 
+focus_state = 0 -- nothing focused
+-- i track i focus for i = 1,..,4
+
+
 play_state = 0 -- not playing
 
 
@@ -177,7 +181,13 @@ end
 
 local hold_time = 0
 local down_time = 0
-local set_down = false
+local set_down = {}
+for j = 1,4 do
+   table.insert(set_down, {})
+   for i = 1,16 do
+      table.insert(set_down[j], false)
+   end
+end
 DEBUG = true
 
 
@@ -480,7 +490,8 @@ function gridredraw()
 	 end
       elseif grid_state == 6 then --focus_track
 	 for j =1,4 do
-	    if pressed[grid_focus_track[j].x][grid_focus_track[j].y] then
+	    g:led(grid_focus_track[j].x,grid_focus_track[j].y,5)
+	    if focus_state == j then
 	       g:led(grid_focus_track[j].x,grid_focus_track[j].y,13)
       
 
@@ -499,8 +510,8 @@ function gridredraw()
 	    g:led(((data[j].pos-1) % 16) +1 , j, 4)
 	 else
 	    for j = 1,4 do
-	       if pressed[grid_set_length[j].x][grid_set_length[j].y] or pressed[grid_focus_track[j].x][grid_focus_track[j].y] then
-		  g:led(((data[j].pos-1) %16 ) +1  ,math.floor((data[j].pos-1)/16) +1,10)
+	       if pressed[grid_set_length[j].x][grid_set_length[j].y] or focus_state == j then
+		  g:led(((data[j].pos-1) %16 ) +1  ,math.floor((data[j].pos-1)/16) +1,8)
 	       end
 	    end	    
 	 end
@@ -551,23 +562,42 @@ function g.key(x,y,z)
    end
 
 
-   if y <=4 and (grid_state == 0 or grid_state == 1) then
+   if y <=4 and (grid_state == 0 or grid_state == 1 or grid_state == 6) then
       -- set on playheads current page
       local x_page = x + 16 * math.floor((data[y].pos-1)/16)
       if z == 1 then
 	 down_time = util.time()
 	 grid_state = 1 -- set locking state
-	 if data[y].gate[x_page] == 0 then
-	    data[y].gate[x_page] =1
-	    set_down = true
+	 
+	 if grid_state <= 1 then
+	    if data[y].gate[x_page] == 0 then
+	       data[y].gate[x_page] =1
+	       set_down[y][x] = true
+	    end
+	 elseif grid_state == 6 then
+	    if data[focus_track].gate[x + 16 * (y-1)] == 0 then
+	       data[focus_track].gate[x + 16 * (y-1)] =1
+	       set_down[focus_track][x] = true
+	    end
 	 end
+      
       else
 	 hold_time = util.time() - down_time
-	 grid_state = 0 -- set nothing pressed state
-	 if hold_time < 0.3 and data[y].gate[x_page] == 1 and not set_down  then
-	    data[y].gate[x_page] =0
-	 elseif set_down then
-	    set_down =false
+	 if not trig_held() then
+	    grid_state = 0 -- set nothing pressed state
+	 end
+	 if grid_state <= 1 then
+	    if hold_time < 0.3 and data[y].gate[x_page] == 1 and not set_down[y][x]  then
+	       data[y].gate[x_page] =0
+	    elseif set_down then
+	       set_down[y][x] =false
+	    end
+	 elseif grid_state == 6 then
+	    if hold_time < 0.3 and data[focus_track].gate[x + 16 * (y-1)] == 1 and not set_down[focus_track][x + 16 * (y-1)]  then
+	       data[focus_track].gate[x + 16 * (y-1)] =0
+	    elseif set_down then
+	       set_down[focus_track][x + 16 * (y-1)] =false
+	    end
 	 end
       end
    elseif y == 5 and grid_state == 1 then
@@ -629,7 +659,7 @@ function g.key(x,y,z)
    
 
    --- begin set track lengths/multipliers/mutes
-   if y>=5 and (grid_state == 0 or grid_state == 2 or grid_state == 3 or grid_state == 4 or grid_state == 5 or grid_state == 6) then
+   if y>=5 and (grid_state == 0 or grid_state == 2 or grid_state == 3 or grid_state == 4 or grid_state == 5) then
       if z == 1 then
 	 if x == grid_set_seq_type.x and y== grid_set_seq_type.y then
 	    grid_state =5 -- set seq_type state
@@ -642,18 +672,12 @@ function g.key(x,y,z)
 	    (x == grid_set_length[3].x and y== grid_set_length[3].y) or
 	 (x == grid_set_length[4].x and y== grid_set_length[4].y) then
 	    grid_state = 2
-	 elseif (x == grid_focus_track[1].x and y== grid_focus_track[1].y) or
-	    (x == grid_focus_track[2].x and y== grid_focus_track[2].y) or
-	    (x == grid_focus_track[3].x and y== grid_focus_track[3].y) or
-	 (x == grid_focus_track[4].x and y== grid_focus_track[4].y) then
-	    grid_state = 6
 	 end
       else
 	 grid_state = 0 -- set normal state
       end
    end
    
-
    if y <= 4 and grid_state == 2 then
       if z == 1 then
 	 for j = 1,4 do
@@ -679,11 +703,34 @@ function g.key(x,y,z)
 	 data[y].seq_type = x
       end
    end
-
-
-   
+      
    --- end set track lengths/multipliers/mutes
 
+
+   -- begin focus selection
+   if z == 1 and (grid_state == 0 or grid_state == 6) then
+
+      for j = 1,4 do
+	 if (x == grid_focus_track[j].x and y== grid_focus_track[j].y)  then
+	    print(j)
+	    if focus_state == j then
+	       grid_state = 0
+	       focus_state = 0
+	       print("unfocus " .. j .. " state is " .. grid_state)
+	    else
+	       grid_state = 6
+	       focus_state = j
+	       print("focus " .. j .. " state is " .. grid_state)
+	       
+	    end
+	 end
+      end
+   end
+   
+
+   --- end focus selection
+
+   
 
    --- begin transport
    if x == grid_resync.x and y == grid_resync.y and z == 1 and grid_state == 0 then
