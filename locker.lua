@@ -46,6 +46,7 @@ grid_state = 0 -- nothing pressed
 -- 4 set mute
 -- 5 set seq_type
 -- 6 set focus_track
+-- 7 set trig held in focus_track state
 
 focus_state = 0 -- nothing focused
 -- i track i focus for i = 1,..,4
@@ -383,31 +384,39 @@ function gridredraw()
 
    for j = 1,4 do
       for i = 1,16 do
-	 if pressed[i][j] and (grid_state == 0 or grid_state == 1) then
-	    if data[j].seq_type == 1 then -- gate
+	 if pressed[i][j] and (grid_state == 1 or grid_state == 7) then
+	    local track = j
+	    local position = i
+	    if grid_state == 7 then
+	       track = focus_state
+	       position = 16 * (j-1) + i
+	    end
+	    
+	    if data[track].seq_type == 1 then -- gate
 	       for k =1,16 do
 		  g:led(k,5,3)
 	       end
-	       g:led(data[j].gate_length[i],5,14)
-	    elseif data[j].seq_type == 2 then -- cv stuff
+
+	       g:led(data[track].gate_length[position],5,14)
+	    elseif data[track].seq_type == 2 then -- cv stuff
 	       -- cv level
 	       for k =1,16 do
 		  g:led(k,5,3)
 	       end
-	       if data[j].cv[i] % 2 == 1 then
-		  g:led((data[j].cv[i] +1)/2   ,5,14)
+	       if data[track].cv[position] % 2 == 1 then
+		  g:led((data[track].cv[position] +1)/2   ,5,14)
 	       else
-		  g:led(data[j].cv[i] /2  ,5,7)
-		  g:led(data[j].cv[i] /2 +1  ,5,7)
+		  g:led(data[track].cv[position] /2  ,5,7)
+		  g:led(data[track].cv[position] /2 +1  ,5,7)
 		  --g:led(data[j].cv[i],5,14)
 	       end
 	       -- slew time
 	       for k =1,16 do
 		  g:led(k,6,3)
 	       end
-	       g:led((data[j].slew_time[i]),6,14)
+	       g:led((data[track].slew_time[position]),6,14)
 
-	    elseif data[j].seq_type == 3 then -- v/8 stuff
+	    elseif data[track].seq_type == 3 then -- v/8 stuff
 
 
 	       for k = 1,#keyboard_indices do
@@ -419,17 +428,17 @@ function gridredraw()
 
 	       end
 	       -- mark locked note note
-	       g:led(keyboard_indices[data[j].note_numbers[i]][1],
-		     keyboard_indices[data[j].note_numbers[i]][2], 14 )
+	       g:led(keyboard_indices[data[track].note_numbers[position]][1],
+		     keyboard_indices[data[track].note_numbers[position]][2], 14 )
 
 	       -- draw octave switches
-	       if data[j].octave[i] == 0 then
+	       if data[track].octave[position] == 0 then
 		  g:led(grid_octave_down.x,grid_octave_down.y,4)
 		  g:led(grid_octave_up.x,grid_octave_up.y,4)
-	       elseif data[j].octave[i] > 0 then
+	       elseif data[track].octave[position] > 0 then
 		  g:led(grid_octave_down.x,grid_octave_down.y,2)
 		  g:led(grid_octave_up.x,grid_octave_up.y ,2 + 8 * (math.floor(clock.get_beats()) %2)) -- blink
-	       elseif data[j].octave[i] <0  then
+	       elseif data[track].octave[position] <0  then
 		  g:led(grid_octave_down.x,grid_octave_down.y,2 + 8 * (math.floor(clock.get_beats()) %2))
 		  g:led(grid_octave_up.x,grid_octave_up.y,2)
 	       end
@@ -488,7 +497,7 @@ function gridredraw()
 	    end
 	    g:led(data[j].seq_type,j,10)
 	 end
-      elseif grid_state == 6 then --focus_track
+      elseif grid_state == 6 or grid_state == 7 then --focus_track
 	 for j =1,4 do
 	    g:led(grid_focus_track[j].x,grid_focus_track[j].y,5)
 	    if focus_state == j then
@@ -506,7 +515,7 @@ function gridredraw()
       
       if data[j].mute == 0 then -- current sequencer position
 	 
-	 if not (grid_state == 2 or grid_state == 6) then
+	 if not (grid_state == 2 or grid_state == 6 or grid_state == 7) then
 	    g:led(((data[j].pos-1) % 16) +1 , j, 4)
 	 else
 	    for j = 1,4 do
@@ -528,6 +537,9 @@ end
 
 function g.key(x,y,z)
    local keyboard_index = get_keyboard_index(x,y)
+      
+
+   
    if z == 1 then
       pressed[x][y] = true
    else
@@ -562,76 +574,106 @@ function g.key(x,y,z)
    end
 
 
-   if y <=4 and (grid_state == 0 or grid_state == 1 or grid_state == 6) then
+   if y <=4 and (grid_state == 0 or grid_state == 1 or grid_state == 6 or grid_state == 7) then
       -- set on playheads current page
       local x_page = x + 16 * math.floor((data[y].pos-1)/16)
+      
+      
+      
       if z == 1 then
 	 down_time = util.time()
-	 grid_state = 1 -- set locking state
+	 if grid_state == 0 then
+	    grid_state = 1 -- set locking state
+	 elseif grid_state == 6 then
+	    grid_state = 7
+	 end
 	 
-	 if grid_state <= 1 then
+	 if grid_state == 0 or grid_state == 1 then
 	    if data[y].gate[x_page] == 0 then
 	       data[y].gate[x_page] =1
 	       set_down[y][x] = true
 	    end
-	 elseif grid_state == 6 then
-	    if data[focus_track].gate[x + 16 * (y-1)] == 0 then
-	       data[focus_track].gate[x + 16 * (y-1)] =1
-	       set_down[focus_track][x] = true
+	 elseif grid_state == 6 or grid_state == 7 then
+	    if data[focus_state].gate[x + 16 * (y-1)] == 0 then
+	       data[focus_state].gate[x + 16 * (y-1)] =1
+	       set_down[focus_state][x + 16 * (y-1)] = true
 	    end
 	 end
       
       else
 	 hold_time = util.time() - down_time
 	 if not trig_held() then
-	    grid_state = 0 -- set nothing pressed state
+	    if grid_state == 1 then
+	       grid_state = 0 -- set nothing pressed state
+	    elseif grid_state == 7 then 
+	       grid_state = 6
+	    end	    
 	 end
-	 if grid_state <= 1 then
+	 if grid_state == 0 or grid_state == 1 then
 	    if hold_time < 0.3 and data[y].gate[x_page] == 1 and not set_down[y][x]  then
 	       data[y].gate[x_page] =0
 	    elseif set_down then
 	       set_down[y][x] =false
 	    end
-	 elseif grid_state == 6 then
-	    if hold_time < 0.3 and data[focus_track].gate[x + 16 * (y-1)] == 1 and not set_down[focus_track][x + 16 * (y-1)]  then
-	       data[focus_track].gate[x + 16 * (y-1)] =0
+	 elseif grid_state == 6 or grid_state == 7 then
+	    if hold_time < 0.3 and data[focus_state].gate[x + 16 * (y-1)] == 1 and not set_down[focus_state][x + 16 * (y-1)]  then
+	       data[focus_state].gate[x + 16 * (y-1)] =0
 	    elseif set_down then
-	       set_down[focus_track][x + 16 * (y-1)] =false
+	       set_down[focus_state][x + 16 * (y-1)] =false
 	    end
 	 end
       end
-   elseif y == 5 and grid_state == 1 then
+
+
+      -- lock lock       
+   elseif y == 5 and grid_state == 1 or grid_state == 7 then
       for j=1,4 do
 	 for i = 1,16 do
 	    if pressed[i][j] then
-	       if data[j].seq_type == 1 then -- gate  length locks
-		  data[j].gate_length[i] = x
+	       local track = j
+	       local position = i
+	       if grid_state == 7 then
+		  track = focus_state
+		  position = 16 * (j-1) + i
 
-	       elseif data[j].seq_type == 2 then --cv level locks
+	       end
+	       --print( "track" .. track .. "  pos=  " .. position .. " x=" .. x)
+	       if data[track].seq_type == 1 then -- gate  length locks
+		  data[track].gate_length[position] = x
+
+
+	       elseif data[track].seq_type == 2 then --cv level locks
 
 		  if n_index == 0 then
-		     data[j].cv[i] = 2 * x -1	--single pressed key
+		     data[track].cv[position] = 2 * x -1	--single pressed key
 		  else
 
-		     data[j].cv[i] = 2 * n_index	--two neighboring keys
+		     data[track].cv[position] = 2 * n_index	--two neighboring keys
 		  end
 
 
-	       elseif data[j].seq_type == 3 then --v/8
+	       elseif data[track].seq_type == 3 then --v/8
 	       end
 	    end
 	 end
       end
 
-   elseif y == 6 and grid_state == 1 then
+   elseif y == 6 and (grid_state == 1 or grid_state == 7)then
       for j=1,4 do
 	 for i = 1,16 do
+	    local track = j
+	    local position = i
+	    if grid_state == 7 then
+	       track = focus_state
+	       position = 16 * (j-1) + i
+	       
+	    end
 	    if pressed[i][j] then
-	       if data[j].seq_type == 1 then -- gate
-	       elseif data[j].seq_type == 2 then --cv slew time locks
-		  data[j].slew_time[i] = x
+	       if data[track].seq_type == 1 then -- gate
+	       elseif data[track].seq_type == 2 then --cv slew time locks
+		  data[track].slew_time[position] = x
 		  
-	       elseif data[j].seq_type == 3 then --v/8 -- octave locks
+	       elseif data[track].seq_type == 3 then --v/8 -- octave locks
 	       end
 	    end
 	 end
@@ -641,17 +683,23 @@ function g.key(x,y,z)
 
 
    
-   if grid_state ==1 then -- keyboard locks
+   if grid_state ==1 or grid_state == 7 then -- keyboard locks
       for j=1,4 do
 	 for i = 1,16 do
+	    local track = j
+	    local position = i
+	    if grid_state == 7 then
+		  track = focus_state
+		  position = 16 * (j-1) + i
+	    end
 	    if keyboard_index ~= 0  then
-	       if pressed[i][j] and data[j].seq_type == 3 then
-		  data[j].note_numbers[i] = keyboard_index
+	       if pressed[i][j] and data[track].seq_type == 3 then
+		  data[track].note_numbers[position] = keyboard_index
 	       end
 	    elseif x == grid_octave_up.x and y == grid_octave_up.y and z == 1 then
-	       data[j].octave[i] = data[j].octave[i] +1
+	       data[track].octave[position] = data[track].octave[position] +1
 	    elseif x == grid_octave_down.x and y == grid_octave_down.y and z == 1 then
-	       data[j].octave[i] = data[j].octave[i] -1
+	       data[track].octave[position] = data[track].octave[position] -1
 	    end
 	 end
       end
@@ -712,15 +760,15 @@ function g.key(x,y,z)
 
       for j = 1,4 do
 	 if (x == grid_focus_track[j].x and y== grid_focus_track[j].y)  then
-	    print(j)
+
 	    if focus_state == j then
 	       grid_state = 0
 	       focus_state = 0
-	       print("unfocus " .. j .. " state is " .. grid_state)
+
 	    else
 	       grid_state = 6
 	       focus_state = j
-	       print("focus " .. j .. " state is " .. grid_state)
+	       
 	       
 	    end
 	 end

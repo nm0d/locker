@@ -5,7 +5,7 @@ right now the connected function does not seem to work. Wait for reply on lines
 Set pos on all tracks to 1
 * DONE track mute 
 * DONE BUG: quickly place many trigs
-* TODO more than 16 steps sequencing
+* DONE more than 16 steps sequencing
 make focus toogle. reimplement locking for this mode - maybe abstraction helpfull instead of doing it twice..
 * TODO track speed multipliers
 cool times. Current ones seem whacky
