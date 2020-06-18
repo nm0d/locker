@@ -222,33 +222,41 @@ function step()
    while true do
       clock.sync(1/params:get("step_div"))
       for j=1,4 do
+	 -- **
 	 if data[j].mult_pos % data[j].mult == 0 then
+	    -- *
 	    if data[j].mute == 0 then
+	       local pos = data[j].pos
 	       if data[j].seq_type == 1 then -- gate sequence
-		  if data[j].gate[data[j].pos] > 0 then
-		     crow.output[j].action = "{ to(5,0), to(0," .. gate_length_multipliers[data[j].gate_length[data[j].pos]] * (clock.get_beat_sec()/(params:get("step_div"))) .. ") }"
+		  if data[j].gate[pos] > 0 then
+		     crow.output[j].action = "{ to(5,0), to(0," .. gate_length_multipliers[data[j].gate_length[pos]] * (clock.get_beat_sec()/(params:get("step_div"))) .. ") }"
 		     crow.output[j]()
 		  end
 	       elseif data[j].seq_type == 2 then --cv sequence
-		  if data[j].gate[data[j].pos] > 0 then
-		     crow.output[j].slew = (data[j].slew_time[data[j].pos] -1) * (clock.get_beat_sec()/(params:get("step_div")))
-		     if data[j].cv[data[j].pos] == 16 then
+		  if data[j].gate[pos] > 0 then
+		     crow.output[j].slew = (data[j].slew_time[pos] -1) * (clock.get_beat_sec()/(params:get("step_div")))
+		     if data[j].cv[pos] == 16 then
 			crow.output[j].volts = 0
-		     elseif data[j].cv[data[j].pos] < 16 then
-			crow.output[j].volts = (16 - data[j].cv[data[j].pos]) * -5/15
+		     elseif data[j].cv[pos] < 16 then
+			crow.output[j].volts = (16 - data[j].cv[pos]) * -5/15
 		     else
-			crow.output[j].volts = (data[j].cv[data[j].pos]-16) * 5/15
+			crow.output[j].volts = (data[j].cv[pos]-16) * 5/15
 		     end
 		  end
 	       elseif data[j].seq_type == 3 then -- v/8 sequence
-		  if data[j].gate[data[j].pos] > 0 then
-		     crow.output[j].volts =  (data[j].note_numbers[data[j].pos] + (data[j].octave[data[j].pos] * 12) )/12
+		  if data[j].gate[pos] > 0 then
+		     crow.output[j].volts =  (data[j].note_numbers[pos] + (data[j].octave[pos] * 12) )/12
+		  end
+	       elseif data[j].seq_tpye == 4 then -- envelope
+		  if data[j].gate[pos] > 0 then
+--		     crow.output[j].action = "{ to(5," .. data[j].attack[pos] .. "), to(" .. data[j].sustain[pos] .. "," .. data[j].decay[pos] .. ") }" -- vllt Fehler hier
+		     crow.output[j]()
 		  end
 	       end
 	    end
-	    data[j].pos = (data[j].pos % data[j].length) + 1
+	    data[j].pos = (data[j].pos % data[j].length) + 1 -- count before playing stuff? goes *
 	 end
-	 data[j].mult_pos = (data[j].mult_pos % data[j].mult) + 1
+	 data[j].mult_pos = (data[j].mult_pos % data[j].mult) + 1 -- count before playing stuff? goes **
       end
       if g then
 	 gridredraw()

@@ -7,6 +7,7 @@ Set pos on all tracks to 1
 * DONE BUG: quickly place many trigs
 * DONE more than 16 steps sequencing
 make focus toogle. reimplement locking for this mode - maybe abstraction helpfull instead of doing it twice..
+* DONE setting length only shows playhead of modified sequence
 * TODO track speed multipliers
 cool times. Current ones seem whacky
 * TODO standard values for volates
@@ -19,18 +20,18 @@ Set ADSR with and log/exp with encoders
 * TODO v/8 lock ui 
 * TODO play/stop buttons
 * TODO trig conditions
-
 * TODO copy/paste trigs
 * TODO hold note key pressed on UI one it is pressed
 * TODO patterns
 * TODO arc implementation
+** Ideas:
+- in state 0 use encoders to notch sequences
+- show current values of CV with leds
+- lock with arc
 * TODO note numbers
 They seem buggy. 
 * TODO shorter slew times for CV
 * TODO finer lock values with encoders
-* TODO Double time multiplicators
-let middle be the default, go up for higher and down 
-* DONE setting length only shows playhead of modified sequence
 * TODO BUG: trigs one step too late
   trigger when step ends
 * TODO transpose v/8 sequences
