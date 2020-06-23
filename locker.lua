@@ -16,6 +16,11 @@ for j = 1,4 do
       note_numbers = {},
       octave = {},
       slew_time = {},
+      attack = {},
+      decay = {},
+      release = {},
+      sustain = {},
+      decay = {},
       pos = 1,
       length =16,
       seq_type =1,
@@ -32,6 +37,10 @@ for j = 1,4 do
       table.insert(data[j].note_numbers,13)
       table.insert(data[j].octave,0)
       table.insert(data[j].slew_time, 1)
+      table.insert(data[j].attack, .1)
+      table.insert(data[j].decay, 2)
+      table.insert(data[j].sustain, 0)
+      table.insert(data[j].release, 0)            
    end
 end
 
@@ -222,9 +231,9 @@ function step()
    while true do
       clock.sync(1/params:get("step_div"))
       for j=1,4 do
-	 -- **
+	 data[j].mult_pos = (data[j].mult_pos % data[j].mult) + 1 -- count before playing stuff? goes **
 	 if data[j].mult_pos % data[j].mult == 0 then
-	    -- *
+	    data[j].pos = (data[j].pos % data[j].length) + 1 -- count before playing stuff? goes *
 	    if data[j].mute == 0 then
 	       local pos = data[j].pos
 	       if data[j].seq_type == 1 then -- gate sequence
@@ -247,16 +256,25 @@ function step()
 		  if data[j].gate[pos] > 0 then
 		     crow.output[j].volts =  (data[j].note_numbers[pos] + (data[j].octave[pos] * 12) )/12
 		  end
-	       elseif data[j].seq_tpye == 4 then -- envelope
+	       elseif data[j].seq_type == 4 then -- envelope
 		  if data[j].gate[pos] > 0 then
---		     crow.output[j].action = "{ to(5," .. data[j].attack[pos] .. "), to(" .. data[j].sustain[pos] .. "," .. data[j].decay[pos] .. ") }" -- vllt Fehler hier
+		     local max = 5
+		     local min = 0
+
+		     local adsr = "{to(" .. min .. ",0), " ..
+			"to(" .. max ..", " .. data[j].attack[pos] .. "), " ..
+			"to(" ..data[j].sustain[pos] ..", " .. data[j].decay[pos] .. "), " ..
+			"to(" ..data[j].sustain[pos] ..", " .. data[j].gate_length[pos] .. "), " ..
+			"to(" ..min ..", " .. data[j].release[pos] .. ")}"
+		     
+		     crow.output[j].action = adsr
 		     crow.output[j]()
 		  end
 	       end
 	    end
-	    data[j].pos = (data[j].pos % data[j].length) + 1 -- count before playing stuff? goes *
+
 	 end
-	 data[j].mult_pos = (data[j].mult_pos % data[j].mult) + 1 -- count before playing stuff? goes **
+
       end
       if g then
 	 gridredraw()
@@ -264,6 +282,7 @@ function step()
       redraw()
    end
 end
+
 
 function resync()
    for j = 1,4 do
@@ -322,6 +341,7 @@ function init()
    ----- TESTING
    data[2].seq_type = 3
    data[3].seq_type = 2
+   data[4].seq_type = 4
 
    ------------
 
@@ -366,6 +386,8 @@ function redraw()
 				  (j-1) *16 +1,
 				  ((data[j].note_numbers[data[j].pos]-1) % 12)+1)
 	       end
+	    elseif data[j].seq_type == 4 then
+	       ui_cv_graphic(1 ,(j-1) *16 +1,j)
 	    end
 	 end
       end
@@ -450,6 +472,8 @@ function gridredraw()
 		  g:led(grid_octave_down.x,grid_octave_down.y,2 + 8 * (math.floor(clock.get_beats()) %2))
 		  g:led(grid_octave_up.x,grid_octave_up.y,2)
 	       end
+	    elseif data[track].seq_type == 4 then -- evelope stuff
+	       
 	    end
 	 end
       end
@@ -500,7 +524,7 @@ function gridredraw()
       elseif grid_state == 5 then --seq_type state
 	 g:led(1,5,13)
 	 for j = 1,4 do
-	    for i = 1,3 do
+	    for i = 1,4 do
 	       g:led(i,j,3)
 	    end
 	    g:led(data[j].seq_type,j,10)
@@ -754,7 +778,7 @@ function g.key(x,y,z)
 	 data[y].mute = 1 - data[y].mute
       end
    end
-   if y <= 4 and x <= 3 and grid_state == 5 then
+   if y <= 4 and x <= 4 and grid_state == 5 then
       if z == 1 then
 	 data[y].seq_type = x
       end
