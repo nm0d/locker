@@ -8,6 +8,7 @@ Set pos on all tracks to 1
 * DONE more than 16 steps sequencing
 make focus toogle. reimplement locking for this mode - maybe abstraction helpfull instead of doing it twice..
 * DONE setting length only shows playhead of modified sequence
+* DONE play/stop buttons
 * TODO track speed multipliers
 cool times. Current ones seem whacky
 * TODO standard values for volates
@@ -18,7 +19,6 @@ Need 0-10 V
 Set ADSR with and log/exp with encoders
 * TODO v/8 glide time
 * TODO v/8 lock ui 
-* TODO play/stop buttons
 * TODO trig conditions
 * TODO copy/paste trigs
 * TODO hold note key pressed on UI one it is pressed

@@ -7,8 +7,25 @@ local ui =  include('lib/ui')
 --- end UI stuff
 
 
+
+
+
+
 data = {}
+standard_values = {}
 for j = 1,4 do
+   standard_values[j] = {
+      gate = 0,
+      gate_length = 1,
+      cv = 16,
+      note_numbers = 13,
+      octave = 0,
+      slew_time = 1,
+      attack = 0.0,
+      decay = 1.0,
+      sustain = 0.0,
+      release = 0.0,
+   }
    data[j] = {
       gate = {},
       gate_length = {},
@@ -18,9 +35,8 @@ for j = 1,4 do
       slew_time = {},
       attack = {},
       decay = {},
-      release = {},
       sustain = {},
-      decay = {},
+      release = {},
       pos = 1,
       length =16,
       seq_type =1,
@@ -31,16 +47,16 @@ for j = 1,4 do
       seq_page =1
    }
    for i = 1,64 do
-      table.insert(data[j].gate, 0)
-      table.insert(data[j].gate_length, 1)
-      table.insert(data[j].cv, 16)
-      table.insert(data[j].note_numbers,13)
-      table.insert(data[j].octave,0)
-      table.insert(data[j].slew_time, 1)
-      table.insert(data[j].attack, .1)
-      table.insert(data[j].decay, 2)
-      table.insert(data[j].sustain, 0)
-      table.insert(data[j].release, 0)            
+      table.insert(data[j].gate, standard_values[j].gate)
+      table.insert(data[j].gate_length, standard_values[j].gate_length)
+      table.insert(data[j].cv, standard_values[j].cv)
+      table.insert(data[j].note_numbers, standard_values[j].note_numbers)
+      table.insert(data[j].octave, standard_values[j].octave)
+      table.insert(data[j].slew_time, standard_values[j].slew_time)
+      table.insert(data[j].attack, standard_values[j].attack)
+      table.insert(data[j].decay, standard_values[j].decay)
+      table.insert(data[j].sustain, standard_values[j].sustain)
+      table.insert(data[j].release, standard_values[j].release)            
    end
 end
 
@@ -61,9 +77,9 @@ focus_state = 0 -- nothing focused
 -- i track i focus for i = 1,..,4
 
 
-play_state = 0 -- not playing
 
 
+play_state  = false
 
 
 keyboard_indices = {
@@ -99,10 +115,7 @@ keyboard_indices = {
 
 
 crow_out_voltages = {0,0,0,0}
-
 queue_length = 30
-
-
 crow_out_voltage_hist = {{},{},{},{}}
 
 for i = 1, queue_length do
@@ -111,19 +124,12 @@ for i = 1, queue_length do
    end
 end
 
-
-
-
-
-
-
 for j = 1,4 do
    crow.output[j].receive =
       function(v)
 	 crow_out_voltages[j] = v
 	 table.remove(crow_out_voltage_hist[j])
 	 table.insert(crow_out_voltage_hist[j],1,v)
-
       end
 end
 
@@ -207,6 +213,8 @@ local grid_set_seq_type = {x = 13, y = 8}
 local grid_set_mult = {x = 14, y = 8}
 local grid_set_mute = {x = 15, y = 8}
 local grid_resync = {x = 16, y= 7}
+local grid_transport = {x = 15, y= 7}
+
 local grid_octave_down = {x = 15, y= 7}
 local grid_octave_up = {x = 16, y= 7}
 
@@ -261,6 +269,7 @@ function step()
 		     local max = 5
 		     local min = 0
 
+
 		     local adsr = "{to(" .. min .. ",0), " ..
 			"to(" .. max ..", " .. data[j].attack[pos] .. "), " ..
 			"to(" ..data[j].sustain[pos] ..", " .. data[j].decay[pos] .. "), " ..
@@ -292,11 +301,27 @@ function resync()
 end
 
 
+function clock.transport.start()
+  print("start")
+
+  id = clock.run(step)
+  play_state = true
+end
+
+function clock.transport.stop()
+   print("stop")
+   clock.cancel(id)
+   play_state = false
+end
+
+
 
 function init()
    params:add{type = "number", id = "step_div", name = "step division", default = 16}
 
-   clock.run(step)
+   --   clock.run(step)
+   clock.transport.start()
+   
    params:add_separator()
 
 
@@ -329,6 +354,62 @@ function init()
 		 action=function(x) data[j].mult = x end }
 
 
+      params:add{type = "control",
+		 id = j.. "_attack",
+		 name = j .." attack",
+		 controlspec = controlspec.new(0,2.5,'lin',0,standard_values[j].attack,''),
+		 action=function(x)
+		    standard_values[j].attack = x
+		    for i = 1,64 do
+		       if data[j].gate[i] == 0 then
+			  data[j].attack[i] = x
+		       end
+		    end
+		 end
+      }
+
+      params:add{type = "control",
+		 id = j.. "_decay",
+		 name = j .." decay",
+		 controlspec = controlspec.new(0,2.5,'lin',0,standard_values[j].decay,''),
+		 action=function(x)
+		    standard_values[j].decay = x
+		    for i = 1,64 do
+		       if data[j].gate[i] == 0 then
+			  data[j].decay[i] = x
+		       end
+		    end
+		 end
+      }
+      params:add{type = "control",
+		 id = j.. "_sustain",
+		 name = j .." sustain",
+		 controlspec = controlspec.new(0,10,'lin',0,standard_values[j].sustain,''),
+		 action=function(x)
+		    standard_values[j].sustain = x
+		    for i = 1,64 do
+		       if data[j].gate[i] == 0 then
+			  data[j].sustain[i] = x
+		       end
+		    end
+		 end
+      }
+      params:add{type = "control",
+		 id = j.. "_release",
+		 name = j .." release",
+		 controlspec = controlspec.new(0,2.5,'lin',0,standard_values[j].release,''),
+		 action=function(x)
+		    standard_values[j].release = x
+		    for i = 1,64 do
+		       if data[j].gate[i] == 0 then
+			  data[j].release[i] = x
+		       end
+		    end
+		 end
+      }
+
+      
+      
       params:add_separator()
    end
 
@@ -345,6 +426,28 @@ function init()
 
    ------------
 
+
+
+   
+   -- begin standard values
+   for j = 1,4 do
+      if data[j].seq_type == 2 then
+	 if standard_values[j].cv == 16 then
+	    crow.output[j].volts = 0
+	 elseif standard_values[j].cv < 16 then
+	    crow.output[j].volts = (16 - standard_values[j].cv) * -5/15
+	 else
+	    crow.output[j].volts = (standard_values[j].cv-16) * 5/15
+	 end
+      elseif data[j].seq_type == 3 then
+	 crow.output[j].volts =  (standard_values[j].note_numbers + (standard_values[j].octave * 12) )/12
+      end
+      
+   end
+   
+   -- end standard values
+
+   
 end
 
 
@@ -492,6 +595,13 @@ function gridredraw()
 	 else
 	    g:led(grid_resync.x, grid_resync.y,5)
 	 end
+
+	 if pressed[grid_transport.x][grid_transport.y] or not play_state then
+	    g:led(grid_transport.x, grid_transport.y,13)
+	 else
+	    g:led(grid_transport.x, grid_transport.y,5)
+	 end
+	 
       end
 
 
@@ -562,6 +672,17 @@ function gridredraw()
    g:refresh()
 end
 
+function remove_locks(x,y)
+   data[y].gate_length[x] = standard_values[y].gate_length
+   data[y].cv[x] = standard_values[y].cv
+   data[y].note_numbers[x] = standard_values[y].note_numbers
+   data[y].octave[x] = standard_values[y].octave
+   data[y].slew_time[x] = standard_values[y].slew_time
+   data[y].attack[x] = standard_values[y].attack
+   data[y].decay[x] = standard_values[y].decay
+   data[y].sustain[x] = standard_values[y].sustain
+   data[y].release[x] = standard_values[y].release
+end
 
 
 
@@ -644,12 +765,14 @@ function g.key(x,y,z)
 	 if grid_state == 0 or grid_state == 1 then
 	    if hold_time < 0.3 and data[y].gate[x_page] == 1 and not set_down[y][x]  then
 	       data[y].gate[x_page] =0
+	       remove_locks(x_page,y)
 	    elseif set_down then
 	       set_down[y][x] =false
 	    end
 	 elseif grid_state == 6 or grid_state == 7 then
 	    if hold_time < 0.3 and data[focus_state].gate[x + 16 * (y-1)] == 1 and not set_down[focus_state][x + 16 * (y-1)]  then
 	       data[focus_state].gate[x + 16 * (y-1)] =0
+	       remove_locks(x+16 * (y-1), focus_state)
 	    elseif set_down then
 	       set_down[focus_state][x + 16 * (y-1)] =false
 	    end
@@ -816,6 +939,17 @@ function g.key(x,y,z)
    if x == grid_resync.x and y == grid_resync.y and z == 1 and grid_state == 0 then
       resync()
    end
+
+   if x == grid_transport.x and y == grid_transport.y and z == 1 and grid_state == 0 then
+      if play_state then
+	 clock.transport.stop()
+      else
+	 clock.transport.start()
+      end
+      
+      
+   end
+   
    -- end transport
 
 
