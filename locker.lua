@@ -114,6 +114,27 @@ keyboard_indices = {
 }
 
 
+
+cv_list_bi = {}
+for i = 1,15 do
+   table.insert(cv_list_bi, (16- i) * -5/15)
+end
+table.insert(cv_list_bi, 0)
+for i = 1,15 do
+   table.insert(cv_list_bi, (i) * 5/15)
+end
+
+cv_list_un = {}
+for i = 0,30 do
+   table.insert(cv_list_un, i * 10/30)
+end
+
+
+
+
+
+
+
 crow_out_voltages = {0,0,0,0}
 queue_length = 30
 crow_out_voltage_hist = {{},{},{},{}}
