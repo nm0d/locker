@@ -292,14 +292,16 @@ function ui_cv_lock(i, j)
    screen.text("slew time")
 
    screen.move(80, 10)
-
-   if data[j].cv[i] == 16 then
-      screen.text(0)
-   elseif data[j].cv[i] < 16 then
-      screen.text((math.floor((16- data[j].cv[i]) * -5/15 *1000) )/1000  )
-   else
-      screen.text(math.floor( (data[j].cv[i]-16) * 5/15 *1000)/1000 ) 
-   end
+-- old cv stuff
+--   if data[j].cv[i] == 16 then
+--      screen.text(0)
+--   elseif data[j].cv[i] < 16 then
+--      screen.text((math.floor((16- data[j].cv[i]) * -5/15 *1000) )/1000  )
+--   else
+--      screen.text(math.floor( (data[j].cv[i]-16) * 5/15 *1000)/1000 ) 
+   --   end
+   screen.text(math.floor(data[j].cv[i]*1000)/1000 ) 
+   
    screen.move(106, 10)
    screen.text("volts")
 

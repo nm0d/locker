@@ -17,7 +17,7 @@ for j = 1,4 do
    standard_values[j] = {
       gate = 0,
       gate_length = 1,
-      cv = 16,
+      cv = 0,
       note_numbers = 13,
       octave = 0,
       slew_time = 1,
@@ -40,7 +40,7 @@ for j = 1,4 do
       pos = 1,
       length =16,
       seq_type =1,
-      cv_bipolar = true,
+      cv_range = 1,
       mult = 4,
       mult_pos = 1,
       mute = 0,
@@ -116,18 +116,47 @@ keyboard_indices = {
 
 
 cv_list_bi = {}
-for i = 1,15 do
-   table.insert(cv_list_bi, (16- i) * -5/15)
+for i = -15,-1 do
+   table.insert(cv_list_bi, i * 5/15)
 end
 table.insert(cv_list_bi, 0)
 for i = 1,15 do
-   table.insert(cv_list_bi, (i) * 5/15)
+   table.insert(cv_list_bi, i * 5/15)
 end
+
+function cv_bi_to_index(v)
+   for i =1,30 do
+      if cv_list_bi[i] <= v and v <= cv_list_bi[i+1] then
+	 if v <= (cv_list_bi[i] + cv_list_bi[i+1]) /2 then
+	    return i
+	 else
+	    return i+1
+	 end
+      end
+   end
+end
+
 
 cv_list_un = {}
 for i = 0,30 do
    table.insert(cv_list_un, i * 10/30)
 end
+
+
+function cv_un_to_index(v)
+   for i =1,30 do
+      if cv_list_un[i] <= v and v <= cv_list_un[i+1] then
+	 if v <= (cv_list_un[i] + cv_list_un[i+1]) /2 then
+	    return i
+	 else
+	    return i+1
+	 end
+      end
+   end
+end
+
+
+
 
 
 
@@ -172,6 +201,7 @@ end
 
 local seq_type_names = {"Gate", "CV", "V/8"}
 local gate_length_multipliers = {1/32,1/16,1/8, 1/4, 1/2, 1,2,3,4,5,6,7,8,16,32,64}
+local cv_range_names = {"bipolar, unipolar"}
 
 
 
@@ -273,13 +303,16 @@ function step()
 	       elseif data[j].seq_type == 2 then --cv sequence
 		  if data[j].gate[pos] > 0 then
 		     crow.output[j].slew = (data[j].slew_time[pos] -1) * (clock.get_beat_sec()/(params:get("step_div")))
-		     if data[j].cv[pos] == 16 then
-			crow.output[j].volts = 0
-		     elseif data[j].cv[pos] < 16 then
-			crow.output[j].volts = (16 - data[j].cv[pos]) * -5/15
-		     else
-			crow.output[j].volts = (data[j].cv[pos]-16) * 5/15
-		     end
+		     -- old cv stuff
+		     --if data[j].cv[pos] == 16 then
+		     --	crow.output[j].volts = 0
+		     --elseif data[j].cv[pos] < 16 then
+		     --	crow.output[j].volts = (16 - data[j].cv[pos]) * -5/15
+		     --else
+		     --	crow.output[j].volts = (data[j].cv[pos]-16) * 5/15
+		     --end
+		     crow.output[j].volts = data[j].cv[pos]
+		     
 		  end
 	       elseif data[j].seq_type == 3 then -- v/8 sequence
 		  if data[j].gate[pos] > 0 then
@@ -359,6 +392,10 @@ function init()
       params:add{type = "option", id= j .."_seq_type", name= j .." seq type",
 		 options= seq_type_names, default = 1,
 		 action = function(x) data[j].seq_type = x end }
+      
+      params:add{type = "option", id= j .."_cv_range", name= j .." cv range",
+		 options= cv_range_names, default = 1,
+		 action = function(x) data[j].cv_range = x end }
 
       params:add{type = "number",
 		 id = j.. "_length",
@@ -429,6 +466,21 @@ function init()
 		 end
       }
 
+      params:add{type = "control",
+		 id = j.. "_cv",
+		 name = j .." cv",
+		 controlspec = controlspec.new(-5,10,'lin',0,standard_values[j].cv,''),
+		 action=function(x)
+		    standard_values[j].cv = x
+		    for i = 1,64 do
+		       if data[j].gate[i] == 0 then
+			  data[j].cv[i] = x
+		       end
+		    end
+		 end
+      }
+      
+
       
       
       params:add_separator()
@@ -453,13 +505,17 @@ function init()
    -- begin standard values
    for j = 1,4 do
       if data[j].seq_type == 2 then
-	 if standard_values[j].cv == 16 then
-	    crow.output[j].volts = 0
-	 elseif standard_values[j].cv < 16 then
-	    crow.output[j].volts = (16 - standard_values[j].cv) * -5/15
-	 else
-	    crow.output[j].volts = (standard_values[j].cv-16) * 5/15
-	 end
+	 --old cv stuff
+--	 if standard_values[j].cv == 16 then
+--	    crow.output[j].volts = 0
+--	 elseif standard_values[j].cv < 16 then
+--	    crow.output[j].volts = (16 - standard_values[j].cv) * -5/15
+--	 else
+--	    crow.output[j].volts = (standard_values[j].cv-16) * 5/15
+--	 end
+	 crow.output[j].volts = standard_values[j].cv
+
+	 
       elseif data[j].seq_type == 3 then
 	 crow.output[j].volts =  (standard_values[j].note_numbers + (standard_values[j].octave * 12) )/12
       end
@@ -470,6 +526,22 @@ function init()
 
    
 end
+
+function enc(n,d)
+   if grid_state == 1 then
+      for j = 1,4 do
+	 for i = 1,16 do
+	    if pressed[i][j] then
+	       if data[j].seq_type == 2 then
+		  data[j].cv[i] = util.clamp(data[j].cv[i] + d/50, -5, 5)
+	       end
+	    end
+	    
+	 end
+      end
+   end
+end
+
 
 
 function redraw()
@@ -557,11 +629,12 @@ function gridredraw()
 	       for k =1,16 do
 		  g:led(k,5,3)
 	       end
-	       if data[track].cv[position] % 2 == 1 then
-		  g:led((data[track].cv[position] +1)/2   ,5,14)
+	       local index = cv_bi_to_index(data[track].cv[position])
+	       if  index % 2 == 1 then
+		  g:led((index +1)/2   ,5,14)
 	       else
-		  g:led(data[track].cv[position] /2  ,5,7)
-		  g:led(data[track].cv[position] /2 +1  ,5,7)
+		  g:led(index /2  ,5,7)
+		  g:led(index /2 +1  ,5,7)
 		  --g:led(data[j].cv[i],5,14)
 	       end
 	       -- slew time
@@ -821,10 +894,10 @@ function g.key(x,y,z)
 	       elseif data[track].seq_type == 2 then --cv level locks
 
 		  if n_index == 0 then
-		     data[track].cv[position] = 2 * x -1	--single pressed key
+		     data[track].cv[position] = cv_list_bi[2 * x -1]	--single pressed key
 		  else
 
-		     data[track].cv[position] = 2 * n_index	--two neighboring keys
+		     data[track].cv[position] = cv_list_bi[2 * n_index]	--two neighboring keys
 		  end
 
 

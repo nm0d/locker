@@ -1,14 +1,3 @@
-* DONE seq type selector
-* DONE crow.connected() Bug
-right now the connected function does not seem to work. Wait for reply on lines
-* DONE resync button
-Set pos on all tracks to 1
-* DONE track mute 
-* DONE BUG: quickly place many trigs
-* DONE more than 16 steps sequencing
-make focus toogle. reimplement locking for this mode - maybe abstraction helpfull instead of doing it twice..
-* DONE setting length only shows playhead of modified sequence
-* DONE play/stop buttons
 * TODO track speed multipliers
 cool times. Current ones seem whacky
 * TODO standard values for volates
@@ -32,7 +21,22 @@ Set ADSR with and log/exp with encoders
 They seem buggy. 
 * TODO shorter slew times for CV
 * TODO finer lock values with encoders
-* TODO BUG: trigs one step too late
-  trigger when step ends
 * TODO transpose v/8 sequences
 let keyboard pop up
+* TODO live input
+
+* bugs
+** DONE BUG: quickly place many trigs
+** DONE BUG: trigs one step too late
+   trigger when step ends
+** DONE crow.connected() Bug
+ right now the connected function does not seem to work. Wait for reply on lines
+
+* DONE seq type selector
+* DONE resync button
+Set pos on all tracks to 1
+* DONE track mute 
+* DONE more than 16 steps sequencing
+make focus toogle. reimplement locking for this mode - maybe abstraction helpfull instead of doing it twice..
+* DONE setting length only shows playhead of modified sequence
+* DONE play/stop buttons
