@@ -1,4 +1,5 @@
 
+
 -- ui stuff
 
 local gate_length_multipliers_text = {"1/32","1/16","1/8","1/4","1/2","1","2","3","4","5","6","7","8","16","32","64"}
@@ -7,6 +8,25 @@ local gate_length_multipliers_text = {"1/32","1/16","1/8","1/4","1/2","1","2","3
 
 function ui_init()
    screen.aa(0)
+
+
+   -- The EnvGraph class is used for creating common envelope graphs. Passing nil means it will use a default value.
+   -- EnvGraph.new_adsr(x_min, x_max, y_min, y_max, attack, decay, sustain, release, level, curve)
+
+
+   EnvGraph = require "envgraph"
+   env_graph = nil
+
+   env_c = -4
+   env_graph = EnvGraph.new_adsr(0, 8, nil, nil,
+				 0,
+				 0,
+				 0,
+				 0,
+				 1, env_c)
+   env_graph:set_position_and_size(66, 11, 58, 42)
+
+   
 end
 
 
@@ -49,11 +69,11 @@ function ui_lock(x, y)
 end
 
 
-function ui_keys_graphic(x,y,n)
+function ui_keys_graphic(x,y,n,s)
    screen.level(15)
    local key_positions = {}
-   
-   key_positions[1] = 0
+
+   key_positions[1] = 0 
    key_positions[2] = 2
    key_positions[3] = 4
    key_positions[4] = 6
@@ -91,7 +111,7 @@ function ui_keys_graphic(x,y,n)
    
     -- white keys
    for i = 0,6 do
-      screen.rect(x + 4 * i,  y, 3, 14)
+      screen.rect(x + 4 * i * s,  y, 3 * s, 14 * s)
    end
    screen.fill()
 
@@ -100,7 +120,7 @@ function ui_keys_graphic(x,y,n)
    if white_keys[n] then
       for i = 1,13 do
 	 screen.level(14-i)
-	 screen.rect(x+ key_positions[n],  y+i, 3, 1)
+	 screen.rect(x+ key_positions[n] * s,  y+i * s, 3 * s, 1 * s)
 	 screen.fill()
       end
    end
@@ -111,13 +131,13 @@ function ui_keys_graphic(x,y,n)
    
    screen.level(0)
    for i = 1,5 do
-      screen.rect(x+ black_key_pos[i],y, 3, 10)
+      screen.rect(x+ black_key_pos[i] *s,y, 3 *s, 10 *s)
    end
    screen.fill()
    
    if black_keys[n] then
       screen.level(2)
-      screen.rect(x+ key_positions[n],  y, 3, 10)
+      screen.rect(x+ key_positions[n] *s,  y, 3 *s, 10 * s)
       screen.fill()
      -- for i = 1,9 do
 
@@ -129,6 +149,7 @@ function ui_keys_graphic(x,y,n)
 end
 
 function ui_gate_graphic(x,y,j)
+   
    local dark = 1
    local middle = 3
    local bright = 4
@@ -215,10 +236,34 @@ function ui_length_info(x,y,j)
    if data[j].mute == 1 then 
       screen.move(x+67, y)
       screen.text("mute")
-      
    end
+end
 
-   
+
+function ui_page_indicator(x,y,i,j)
+   screen.level(3)
+   for k = 0, math.floor((data[j].length -1) / 16) do
+   screen.rect(x + k * 9,y,9,9)
+   end
+   screen.stroke()
+
+   screen.level(5)
+   for k = 1,data[j].length do
+      if k <= data[j].pos then
+	 local x_offset = ((k-1)%4 * 2) + math.floor((k-1)/16) * 9
+	 local y_offset = (math.floor((k-1) / 4) * 2) % 8
+	 screen.rect(x + x_offset, y + y_offset, 2,2)
+      end
+   end
+   screen.fill()
+   screen.level(15)
+--   screen.move(x+math.floor((data[j].pos-1)/16) *9 + 4,y+6)
+   --   screen.text_center(data[j].pos)
+
+
+   screen.rect(x + math.floor((data[j].pos-1)/16) * 9, y, 9,9)
+   screen.stroke()
+
 end
 
 
@@ -258,67 +303,193 @@ end
 
 
 function ui_gate_lock(i,j)
-   ui_lock(0,9)
+   draw_header("track " .. j,"step ".. i, "gate")
+   
+--   ui_lock(0,9)
    
    screen.level(15)
-   screen.move(15, 10)
+   screen.move(15, 40)
    screen.text("gate")
-   screen.move(15, 20)
+   screen.move(15, 50)
    screen.text("length")
    
-   screen.move(55, 10)
+   screen.move(55, 40)
+   screen.font_size(21)
    screen.text(gate_length_multipliers_text[data[j].gate_length[i]])
-   
-   screen.move(55, 20)
+   screen.font_size(8)
+   screen.move(55, 50)
    if data[j].gate_length[i] > 6 then
       screen.text("steps")
    else
       screen.text("step")
    end
+
+   
    screen.fill()
 end
 
 
 function ui_cv_lock(i, j)
-   ui_lock(0,9)
+   draw_header("track " .. j,"step ".. i, "voltage")
+
+--[[
    screen.level(15)
-
-   screen.move(15, 10)
-   screen.text("control voltage ")
-
-
-
-   screen.move(15, 30)
-   screen.text("slew time")
-
-   screen.move(80, 10)
--- old cv stuff
---   if data[j].cv[i] == 16 then
---      screen.text(0)
---   elseif data[j].cv[i] < 16 then
---      screen.text((math.floor((16- data[j].cv[i]) * -5/15 *1000) )/1000  )
---   else
---      screen.text(math.floor( (data[j].cv[i]-16) * 5/15 *1000)/1000 ) 
-   --   end
+   screen.move(5, 20)
+   screen.text("control voltage")
+   screen.move(5, 40)
+   screen.font_size(21)
    screen.text(math.floor(data[j].cv[i]*1000)/1000 ) 
-   
-   screen.move(106, 10)
+   screen.font_size(8)
+   screen.move(5, 50)
+   screen.text("volts")
+   screen.move(80, 20)
+   screen.text("slew time")
+   screen.move(80, 40)
+   screen.font_size(21)
+   screen.text(data[j].slew_time[i]-1)
+   screen.font_size(8)
+   screen.move(80, 50)
+   screen.text("steps")
+   screen.fill()
+]]--
+   screen.level(15)
+   screen.move(0, 20)
+   screen.font_size(16)
+   screen.text(math.floor(data[j].cv[i]*1000)/1000 ) 
+   screen.font_size(8)
+   screen.move(0, 30)   
    screen.text("volts")
 
-
-   screen.move(80, 30)
---   screen.text(math.floor(((data[j].slew_time[i]-1)/params:get("step_div") *1000))/1000)
+   screen.move(0, 50)
+   screen.font_size(16)
    screen.text(data[j].slew_time[i]-1)
+   screen.font_size(8)
+   screen.move(0, 60)
+   if data[j].slew_time[i] ~= 2 then
+      screen.text("steps slew")
+   else
+      screen.text("step slew")
+   end
+  
+   screen.move(62,38)
+   screen.text_right("0v")
+   screen.move(62,12)
+   screen.text_right("+5v")
+   screen.move(62,63)
+   screen.text_right("-5v")
 
 
-   screen.move(106, 30)
-   screen.text("steps")
    
+   screen.level(5)
+   for k = 0,15 do
+      screen.pixel(65 +k * 4, 35)
+   end
+   for k = -5,5 do
+      screen.pixel(65, 35 + k * 5)
+   end
    screen.fill()
+   screen.level(10)
+   
+   screen.move(66,35 -math.floor(data[j].cv[previous_active_trigger(i,j)] * 5)+1)
+   screen.line_cap("butt")
+   screen.line(66 + (data[j].slew_time[i]-1) * 4, 35 - math.floor(data[j].cv[i]*5 ) +1)
+   screen.stroke()
 
-
-
+   screen.level(15)
+   screen.rect(65 + (data[j].slew_time[i]-1) * 4, 35 - math.floor(data[j].cv[i]*5 ) ,2,2)
+   screen.stroke()
+   screen.level(0)
+   screen.pixel(65 + (data[j].slew_time[i]-1) * 4, 35 - math.floor(data[j].cv[i]*5 ))
+   screen.fill()
+   
 end
+function mod(x,m)
+   return (x % m + m) % m
+end
+
+
+function previous_active_trigger(i,j)
+   prev = i
+   for k = 1,data[j].length do
+      if data[j].gate[mod(i-k -1, data[j].length) +1 ] == 1 then
+	 prev = mod(i-k -1, data[j].length)+ 1
+	 break
+      end
+   end
+   return prev
+end
+
+
+
+function draw_header(left, mid, right)
+   screen.level(8)
+   screen.rect(0,0,128,7)
+   screen.fill()
+   screen.level(0)
+   screen.move(1,6)
+   screen.text(left)
+   screen.move(64,6)
+   screen.text_center(mid)
+   screen.move(127,6)
+   screen.text_right(right)
+
+--   ui_lock(64, 10)
+   
+end
+
+
+
+function ui_keyboard_lock(i,j)
+   draw_header("track " .. j,"step ".. i, "chromatic")
+   crow.output[j].query()
+   screen.level(8)
+   screen.move(60,52)
+   screen.font_size(21)
+--   screen.text(MusicUtil.note_num_to_name((data[j].note_numbers[i]-1  + data[j].octave[i] * 12) ,true))
+   screen.text(MusicUtil.note_num_to_name((data[j].note_numbers[i]-1  + data[j].octave[i] * 12) , true))
+   screen.font_size(8)
+   screen.move(60,60)
+   screen.text(util.round(util.clamp((data[j].note_numbers[i]-1)/12 + data[j].octave[i],0,10), 0.01) .. "v")
+
+
+   ui_keys_graphic(60, 10, ((data[j].note_numbers[i]-1) % 12)+1,2)
+
+   
+
+   
+
+   
+end
+
+
+function ui_env_lock(i,j)
+   draw_header("track " .. j,"step ".. i, "envelope")
+    if select_SR then screen.level(3) else screen.level(15) end
+    screen.move(1, 14)
+    screen.text("A " .. util.round(data[j].attack[i], 0.01) .."s")
+    screen.move(34, 14)
+    screen.text("D " .. util.round(data[j].decay[i], 0.01) .."s")
+    if select_SR then screen.level(15) else screen.level(3) end
+    screen.move(1, 24)
+    screen.text("S " .. util.round(data[j].sustain[i], 0.01))
+    screen.move(34, 24)
+    screen.text("R " .. util.round(data[j].release[i], 0.01) .."s")
+
+   
+
+   env_graph:edit_adsr(data[j].attack[i],
+		       data[j].decay[i],
+		       data[j].sustain[i]/10,
+		       data[j].release[i],
+		       1, env_c)
+      screen.aa(1)
+   env_graph:redraw()
+   screen.aa(0)
+end
+
+
+
+
 
 
 function ui_highlight_mode()
