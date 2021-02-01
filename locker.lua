@@ -70,8 +70,14 @@ grid_state = 0 -- nothing pressed
 -- 3 set mult
 -- 4 set mute
 -- 5 set seq_type
--- 6 set focus_track
--- 7 set trig held in focus_track state
+-- 6 focus_track
+-- 7 trig held in focus_track state
+-- 8 set length in focus_track state 
+-- 9 set mult in focus_track state
+-- 10 set mute in focus_track state
+-- 11 set seq_type in focus_track state
+
+
 
 focus_state = 0 -- nothing focused
 -- i track i focus for i = 1,..,4
@@ -88,9 +94,10 @@ for i = 0,127 do
 end
 
 function get_keyboard_index(num)
-  return((num -1)  % 24) + 1
+   return((num -1)  % 24) + 1
 end
 
+      
 
 keyboard_octave = 0
 keyboard_indices = {
@@ -119,9 +126,9 @@ keyboard_indices = {
    {13,5}, --a#
    {14,6}, --b
    {15,6}, --c
-  -- {15,5}, --c#
-  -- {16,6}, --d
-  -- {16,5}, --d#
+   -- {15,5}, --c#
+   -- {16,6}, --d
+   -- {16,5}, --d#
 }
 
 function crow_set_pitch(channel, note_number, octave)
@@ -178,7 +185,7 @@ max_attack = 2.5
 max_decay = 2.5
 max_sustain = 10.0
 max_release = 2.5
-   
+
 for i = 0,14 do
    table.insert(attack_list, i * max_attack/14)
    table.insert(decay_list, i * max_decay/14)
@@ -239,9 +246,9 @@ end
 
 
 
-local seq_type_names = {"Gate", "CV", "V/8"}
-local gate_length_multipliers = {1/32,1/16,1/8, 1/4, 1/2, 1,2,3,4,5,6,7,8,16,32,64}
-local cv_range_names = {"bipolar", "unipolar"}
+seq_type_names = {"Gate", "CV", "V/8", "Env"}
+gate_length_multipliers = {1/32,1/16,1/8, 1/4, 1/2, 1,2,3,4,5,6,7,8,16,32,64}
+cv_range_names = {"bipolar", "unipolar"}
 
 
 
@@ -256,6 +263,18 @@ for x = 1,16 do
       press_lock[x][y] = 0
    end
 end
+
+pressed_trigger = {}
+for position = 1,64 do
+   pressed_trigger[position] = {}
+   for track = 1,4 do
+      pressed_trigger[position][track] = false
+   end
+end
+
+   
+
+
 --display_lock = {}
 --display_lock[step] = 1
 --display_lock[track] = 1
@@ -291,7 +310,7 @@ end
 
 local hold_time = 0
 local down_time = 0
-local set_down = {}
+set_down = {}
 for j = 1,4 do
    table.insert(set_down, {})
    for i = 1,16 do
@@ -413,10 +432,10 @@ end
 
 
 function clock.transport.start()
-  print("start")
+   print("start")
 
-  id = clock.run(step)
-  play_state = true
+   id = clock.run(step)
+   play_state = true
 end
 
 function clock.transport.stop()
@@ -580,13 +599,13 @@ function init()
    for j = 1,4 do
       if data[j].seq_type == 2 then
 	 --old cv stuff
---	 if standard_values[j].cv == 16 then
---	    crow.output[j].volts = 0
---	 elseif standard_values[j].cv < 16 then
---	    crow.output[j].volts = (16 - standard_values[j].cv) * -5/15
---	 else
---	    crow.output[j].volts = (standard_values[j].cv-16) * 5/15
---	 end
+	 --	 if standard_values[j].cv == 16 then
+	 --	    crow.output[j].volts = 0
+	 --	 elseif standard_values[j].cv < 16 then
+	 --	    crow.output[j].volts = (16 - standard_values[j].cv) * -5/15
+	 --	 else
+	 --	    crow.output[j].volts = (standard_values[j].cv-16) * 5/15
+	 --	 end
 	 crow.output[j].volts = standard_values[j].cv
 
 	 
@@ -664,16 +683,11 @@ function redraw()
    if not crow.connected() and not DEBUG then
       ui_crow_disconnected()
    else
-      if grid_state == 1 or grid_state == 7 then
-	 for j =1,4 do
-	    for i =1,16 do
-	       local track = j
-	       local position = i + 16 * math.floor((data[j].pos-1)/16)
-	       if grid_state == 7 then
-		  track = focus_state
-		  position = 16 * (j-1) + i
-	       end
-	       if pressed[i][j] then
+      if grid_state == 1 or grid_state == 7 then -- lock
+	 local break_it = false
+	 for track =1,4 do
+	    for position =1,64 do
+	       if pressed_trigger[position][track] then
 		  if data[track].seq_type == 1 then
 		     ui_gate_lock(position,track)
 		  elseif data[track].seq_type == 2 then
@@ -683,18 +697,25 @@ function redraw()
 		  elseif data[track].seq_type == 4 then
 		     ui_env_lock(position,track)
 		  end
+		  break_it = true
 		  break
 	       end
 	    end
+	    if break_it then
+	       break
+	    end
 	 end
-      end
-
-      if grid_state ~= 1 and grid_state ~= 7 then
-	 ui_highlight_mode()
+      elseif grid_state == 0 then --standard
+	-- ui_highlight_mode()
 
 	 for j =1,4 do
 	    --ui_length_info(40,(j-1) *16 +9, j)
-	    ui_page_indicator(40,(j-1) * 16 + 5, i,j)
+	    ui_page_indicator(34,(j-1) * 16 + 5,j)
+	    if data[j].mute == 0 then
+	       ui_mult_indicator(35,(j-1) * 16 + 11,j)
+	    else
+	       ui_mute_indicator(35,(j-1) * 16 + 11,j)
+	    end
 	    
 	    if data[j].seq_type == 1 then
 	       ui_gate_graphic(1 ,(j-1) *16 +1, j)
@@ -714,7 +735,78 @@ function redraw()
 	       ui_cv_graphic(1 ,(j-1) *16 +1,j)
 	    end
 	 end
+      elseif grid_state == 5 or grid_state == 11 then -- seq type state
+	 ui_set_type()
+	   for j =1,4 do
+	    --ui_length_info(40,(j-1) *16 +9, j)
+	    if data[j].seq_type == 1 then
+	       ui_gate_graphic(1 ,(j-1) *16 +1, j)
+	    elseif data[j].seq_type == 2 then
+	       ui_cv_graphic(1 ,(j-1) *16 +1,j)
+	    elseif data[j].seq_type == 3 then
+	       if data[j].gate[data[j].pos] == 0 then
+		  ui_keys_graphic(1 ,(j-1) *16 +1, 0,1)
+	       else
+		  ui_keys_graphic(1,
+				  (j-1) *16 +1,
+				  ((data[j].note_numbers[data[j].pos]-1) % 12)+1,
+				  1
+		  )
+	       end
+	    elseif data[j].seq_type == 4 then
+	       ui_cv_graphic(1 ,(j-1) *16 +1,j)
+	    end
+	 end
+      elseif grid_state == 6 then -- focus track state
+	 for j = 1,4 do
+	    
+	    if j == focus_state then
+	       ui_focus_track(j)
+	       y_pos = 22
+	       ui_page_indicator(34,y_pos + 5,j)
+	       if data[j].mute == 0 then
+		  ui_mult_indicator(35,y_pos + 11,j)
+	       else
+		  ui_mute_indicator(35,y_pos + 11,j)
+	       end
+	       
+	       if data[j].seq_type == 1 then
+		  ui_gate_graphic(1 ,y_pos +1, j)
+	       elseif data[j].seq_type == 2 then
+		  ui_cv_graphic(1 ,y_pos +1,j)
+	       elseif data[j].seq_type == 3 then
+		  if data[j].gate[data[j].pos] == 0 then
+		     ui_keys_graphic(1 ,y_pos +1, 0,1)
+		  else
+		     ui_keys_graphic(1,
+				  y_pos +1,
+				  ((data[j].note_numbers[data[j].pos]-1) % 12)+1,
+				  1
+		     )
+		  end
+	       elseif data[j].seq_type == 4 then
+		  ui_cv_graphic(1 ,y_pos +1,j)
+	       end
+	    end
+	 end
+      elseif grid_state == 2 or grid_state == 8 then -- set length
+	 for j =1,4 do
+	    if pressed[grid_set_length[j].x][grid_set_length[j].y] then
+	       ui_set_length(j)
+	       ui_page_indicator(34,(j-1) * 16 + 5,j,true)
+	    else
+	       ui_page_indicator(34,(j-1) * 16 + 5,j,false)
+	    end
+	 end
+      elseif grid_state == 3 or grid_state == 9 then -- set mult
+	 for j = 1,4 do
+	    ui_mult_indicator(35,(j-1) * 16 + 11,j)
+	 end
+	 ui_set_mult()
+      elseif grid_state == 4 or grid_state == 10 then -- set mute
+	 ui_set_mute()
       end
+      
 
    end
    --end
@@ -724,33 +816,73 @@ end
 function gridredraw()
    g:all(0)
 
+   
    if grid_state == 0 or grid_state == 1 then
       for j= 1,4 do
+	 -- page indicators
+	 if data[j].length > 16 and data[j].length <=32 then
+	    if data[j].pos <= 16 then
+	       for i = 1,8 do
+		  g:led(i,j,2)
+	       end
+	    else
+	       for i = 9,16 do
+		  g:led(i,j,2)
+	       end
+	    end
+	 elseif data[j].length > 32 and data[j].length <=48 then
+	    if data[j].pos <= 16 then
+	       for i = 1,5 do
+		  g:led(i,j,2)
+	       end
+	    elseif data[j].pos > 16 and data[j].pos <= 32 then
+	       for i = 6,10 do
+		  g:led(i,j,2)
+	       end
+	    elseif data[j].pos > 32  and data[j].pos <= 48 then
+	       for i = 11,16 do
+		  g:led(i,j,2)
+	       end
+	    end
+	 elseif data[j].length > 48  then
+	    if data[j].pos <= 16 then
+	       for i = 1,4 do
+		  g:led(i,j,2)
+	       end
+	    elseif data[j].pos > 16 and data[j].pos <= 32 then
+	       for i = 5,8 do
+		  g:led(i,j,2)
+	       end
+	    elseif data[j].pos > 32  and data[j].pos <= 48 then
+	       for i = 9,12 do
+		  g:led(i,j,2)
+	       end
+	    elseif data[j].pos > 48 then
+	       for i = 13,16 do
+		  g:led(i,j,2)
+	       end
+	    end
+	 end
+	 
 	 for i = 1,16 do
 	    local i_page = i + 16 * math.floor((data[j].pos-1)/16)
 	    if data[j].gate[i_page] > 0  then
 	       g:led(i,j,10)
 	    end
 	 end
+	 
+      
       end
    end
 
 
-   for j = 1,4 do
-      for i = 1,16 do
-	 if pressed[i][j] and (grid_state == 1 or grid_state == 7) then
-	    local track = j
-	    local position = i + 16 * math.floor((data[j].pos-1)/16)
-	    if grid_state == 7 then
-	       track = focus_state
-	       position = 16 * (j-1) + i
-	    end
-	    
+   for track = 1,4 do
+      for position = 1,64 do
+	 if pressed_trigger[position][track] and (grid_state == 1 or grid_state == 7) then
 	    if data[track].seq_type == 1 then -- gate
 	       for k =1,16 do
 		  g:led(k,5,3)
 	       end
-
 	       g:led(data[track].gate_length[position],5,14)
 	    elseif data[track].seq_type == 2 then -- cv stuff
 	       -- cv level
@@ -789,7 +921,7 @@ function gridredraw()
 	       -- draw octave switches
 
 	       for k = 0,4 do
-		  if data[track].octave[i] == 2 * k then
+		  if data[track].octave[position] == 2 * k then
 		     g:led(grid_octaves[k + 1].x, grid_octaves[k + 1].y, 14)
 		  else
 		     g:led(grid_octaves[k + 1].x, grid_octaves[k + 1].y, 5)
@@ -844,7 +976,7 @@ function gridredraw()
 
 	       
 	       
-	       
+
 	    end
 	 end
       end
@@ -873,7 +1005,7 @@ function gridredraw()
       end
 
 
-      if grid_state == 2 then -- length state
+      if grid_state == 2 or grid_state == 8 then -- length state
 	 for j =1,4 do
 	    if pressed[grid_set_length[j].x][grid_set_length[j].y] then
 	       g:led(grid_set_length[j].x,grid_set_length[j].y,13)
@@ -884,7 +1016,7 @@ function gridredraw()
 	    end
 	 end
 	 
-      elseif grid_state == 3 then -- mult state
+      elseif grid_state == 3 or grid_state == 9 then -- mult state
 	 g:led(grid_set_mult.x,grid_set_mult.y,13)
 	 for j = 1,4 do
 	    for i = 1,16 do
@@ -892,14 +1024,14 @@ function gridredraw()
 	    end
 	    g:led(data[j].mult,j,10)
 	 end
-      elseif grid_state == 4 then --  mute state
+      elseif grid_state == 4 or grid_state == 10 then --  mute state
 	 g:led(grid_set_mute.x,grid_set_mute.y,13)
 	 for j = 1,4 do
 	    for i = 1,16 do
 	       if data[j].mute == 0 then g:led(i,j,3) end
 	    end
 	 end
-      elseif grid_state == 5 then --seq_type state
+      elseif grid_state == 5 or grid_state == 11 then --seq_type state
 	 g:led(grid_set_seq_type.x,grid_set_seq_type.y,13)
 	 for j = 1,4 do
 	    for i = 1,4 do
@@ -912,7 +1044,7 @@ function gridredraw()
 	    g:led(grid_focus_track[j].x,grid_focus_track[j].y,5)
 	    if focus_state == j then
 	       g:led(grid_focus_track[j].x,grid_focus_track[j].y,13)
-      
+	       
 
 	       for k=1,64 do
 		  if data[j].gate[k] == 1 then
@@ -923,10 +1055,9 @@ function gridredraw()
 	 end
       end
       
-      if data[j].mute == 0 then -- current sequencer position
-	 
-	 if not (grid_state == 2 or grid_state == 6 or grid_state == 7) then
-	    g:led(((data[j].pos-1) % 16) +1 , j, 4)
+      if data[track].mute == 0 then -- current sequencer position
+	 if not (grid_state == 2 or grid_state == 6 or grid_state == 7 or grid_state == 8) then
+	    g:led(((data[track].pos-1) % 16) +1 , track, 4)
 	 else
 	    for j = 1,4 do
 	       if pressed[grid_set_length[j].x][grid_set_length[j].y] or focus_state == j then
@@ -958,7 +1089,7 @@ end
 
 function g.key(x,y,z)
    local keyboard_index = get_keyboard_index(x,y)
-      
+   
 
    
    if z == 1 then
@@ -996,33 +1127,27 @@ function g.key(x,y,z)
 
 
    if y <=4 and (grid_state == 0 or grid_state == 1 or grid_state == 6 or grid_state == 7) then
-      -- set on playheads current page
-      local x_page = x + 16 * math.floor((data[y].pos-1)/16)
-      
-      
-      
+      local position = x + 16 * math.floor((data[y].pos-1)/16)
+      local track = y
+      if grid_state == 6 or grid_state == 7 then
+	 position = x + 16 * (y-1)
+	 track = focus_state
+      end
       if z == 1 then
 	 down_time = util.time()
+	 pressed_trigger[position][track] = true
 	 if grid_state == 0 then
 	    grid_state = 1 -- set locking state
-	 elseif grid_state == 6 then
-	    grid_state = 7
+	 elseif grid_state == 6 then -- focus track mode
+	    grid_state = 7 -- locking in focus track mode
 	 end
-	 
-	 if grid_state == 0 or grid_state == 1 then
-	    if data[y].gate[x_page] == 0 then
-	       data[y].gate[x_page] =1
-	       set_down[y][x] = true
-	    end
-	 elseif grid_state == 6 or grid_state == 7 then
-	    if data[focus_state].gate[x + 16 * (y-1)] == 0 then
-	       data[focus_state].gate[x + 16 * (y-1)] =1
-	       set_down[focus_state][x + 16 * (y-1)] = true
-	    end
+	 if data[track].gate[position] == 0 then
+	    data[track].gate[position] =1
+	    set_down[track][position] = true
 	 end
-      
       else
 	 hold_time = util.time() - down_time
+	 pressed_trigger[position][track] = false
 	 if not trig_held() then
 	    if grid_state == 1 then
 	       grid_state = 0 -- set nothing pressed state
@@ -1030,41 +1155,21 @@ function g.key(x,y,z)
 	       grid_state = 6
 	    end	    
 	 end
-	 if grid_state == 0 or grid_state == 1 then
-	    if hold_time < 0.3 and data[y].gate[x_page] == 1 and not set_down[y][x]  then
-	       data[y].gate[x_page] =0
-	       remove_locks(x_page,y)
-	    elseif set_down then
-	       set_down[y][x] =false
-	    end
-	 elseif grid_state == 6 or grid_state == 7 then
-	    if hold_time < 0.3 and data[focus_state].gate[x + 16 * (y-1)] == 1 and not set_down[focus_state][x + 16 * (y-1)]  then
-	       data[focus_state].gate[x + 16 * (y-1)] =0
-	       remove_locks(x+16 * (y-1), focus_state)
-	    elseif set_down then
-	       set_down[focus_state][x + 16 * (y-1)] =false
-	    end
+	 if hold_time < 0.3 and data[track].gate[position] == 1 and not set_down[track][position] then
+	    data[track].gate[position] =0
+	    remove_locks(position,track)
 	 end
+	 set_down[track][position] =false
       end
 
 
       -- lock lock       
    elseif y == 5 and (grid_state == 1 or grid_state == 7) then
-      for j=1,4 do
-	 for i = 1,16 do
-	    if pressed[i][j] then
-	       local track = j
-	       local position = i
-	       if grid_state == 7 then
-		  track = focus_state
-		  position = 16 * (j-1) + i
-
-	       end
-	       --print( "track" .. track .. "  pos=  " .. position .. " x=" .. x)
+      for track=1,4 do
+	 for position = 1,64 do
+	    if pressed_trigger[position][track] then
 	       if data[track].seq_type == 1 then -- gate  length locks
 		  data[track].gate_length[position] = x
-
-
 	       elseif data[track].seq_type == 2 then --cv level locks
 		  if n_index == 0 then
 		     data[track].cv[position] = cv_list_bi[2 * x -1]	--single pressed key
@@ -1080,7 +1185,6 @@ function g.key(x,y,z)
 		     else
 			data[track].decay[position] = decay_list[2 * (x-8) -1]
 		     end
-		     
 		  else
 		     if n_index < 8 then
 			data[track].attack[position] = attack_list[2 * n_index]
@@ -1090,25 +1194,16 @@ function g.key(x,y,z)
 		     else
 			data[track].decay[position] = decay_list[2 * (n_index - 8)]
 		     end
-		     
 		  end
-		  
 	       end
 	    end
 	 end
       end
 
    elseif y == 6 and (grid_state == 1 or grid_state == 7)then
-      for j=1,4 do
-	 for i = 1,16 do
-	    local track = j
-	    local position = i
-	    if grid_state == 7 then
-	       track = focus_state
-	       position = 16 * (j-1) + i
-	       
-	    end
-	    if pressed[i][j] then
+      for track=1,4 do
+	 for position = 1,64 do
+	    if pressed_trigger[position][track] then
 	       if data[track].seq_type == 1 then -- gate
 	       elseif data[track].seq_type == 2 then --cv slew time locks
 		  data[track].slew_time[position] = x
@@ -1147,19 +1242,13 @@ function g.key(x,y,z)
 
    
    if grid_state ==1 or grid_state == 7 then -- keyboard locks
-      for j=1,4 do
-	 for i = 1,16 do
-	    local track = j
-	    local position = i
-	    if grid_state == 7 then
-		  track = focus_state
-		  position = 16 * (j-1) + i
-	    end
-	    if pressed[i][j] and data[track].seq_type == 3 then
+      for track=1,4 do
+	 for position = 1,64 do
+	    if pressed_trigger[position][track] and data[track].seq_type == 3 then -- chromatic track
 	       if keyboard_index ~= 0  then
 		  data[track].note_numbers[position] = keyboard_index
 	       elseif x == grid_octave_0.x and y == grid_octave_0.y and z == 1 then
-	       data[track].octave[position] =  0
+		  data[track].octave[position] =  0
 	       elseif x == grid_octave_2.x and y == grid_octave_2.y and z == 1 then
 		  data[track].octave[position] =  2
 	       elseif x == grid_octave_4.x and y == grid_octave_4.y and z == 1 then
@@ -1220,7 +1309,7 @@ function g.key(x,y,z)
 	 data[y].seq_type = x
       end
    end
-      
+   
    --- end set track lengths/multipliers/mutes
 
 

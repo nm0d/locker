@@ -219,35 +219,52 @@ function ui_gate_graphic(x,y,j)
    end
 end
 
-
-function ui_length_info(x,y,j)
+function ui_mult_indicator(x,y,j)
    screen.level(15)
-   screen.move(x, y)
-   screen.text(data[j].length)
-   screen.move(x+10, y)
-   screen.text("steps")
-   
-   screen.move(x+58, y)
+   screen.font_size(8)
+   screen.move(x+53, y)
    screen.text_right(data[j].mult/4)
-   
-   screen.move(x+60, y)
+   screen.move(x+55, y)
    screen.text("x")
+end
 
-   if data[j].mute == 1 then 
-      screen.move(x+67, y)
-      screen.text("mute")
-   end
+function ui_mute_indicator(x,y,j)
+
+   screen.level(15)
+   screen.rect(x+36,y-6, 25,8)
+   screen.fill()
+   screen.level(0)
+   screen.font_size(8)
+   screen.move(x+53, y)
+   screen.text_right(data[j].mult/4)
+   screen.move(x+55, y)
+   screen.text("m")
 end
 
 
-function ui_page_indicator(x,y,i,j)
-   screen.level(3)
+
+
+function ui_page_indicator(x,y,j,reverse_colors)
+      
+   if reverse_colors then
+      screen.level(15)
+      screen.rect(x-2,y-2,39,12)
+      screen.fill()
+      screen.level(5)
+      
+   else
+      screen.level(3)
+   end
+   
    for k = 0, math.floor((data[j].length -1) / 16) do
    screen.rect(x + k * 9,y,9,9)
    end
    screen.stroke()
-
-   screen.level(5)
+   if reverse_colors then
+      screen.level(1)
+   else
+      screen.level(5)
+   end
    for k = 1,data[j].length do
       if k <= data[j].pos then
 	 local x_offset = ((k-1)%4 * 2) + math.floor((k-1)/16) * 9
@@ -256,15 +273,164 @@ function ui_page_indicator(x,y,i,j)
       end
    end
    screen.fill()
-   screen.level(15)
---   screen.move(x+math.floor((data[j].pos-1)/16) *9 + 4,y+6)
-   --   screen.text_center(data[j].pos)
-
-
+   if reverse_colors then
+      screen.level(0)
+   else
+      screen.level(15)
+   end
    screen.rect(x + math.floor((data[j].pos-1)/16) * 9, y, 9,9)
    screen.stroke()
+end
+
+
+function ui_focus_track(track)
+   screen.level(15)
+   screen.rect(99,0,28,24)
+   screen.fill()
+   screen.level(0)
+   screen.font_size(8)
+   screen.move(100,7)
+   screen.text("track")
+   screen.font_size(21)
+   screen.move(111,22)
+   screen.text_center(track)
+
+  -- screen.level(15)
+  -- screen.font_size(8)
+  -- screen.move(100,33)
+  -- screen.text("focus")
+   
+   screen.level(15)
+   screen.rect(1,40,27,10) 
+   screen.fill()
+   screen.level(0)
+   screen.font_size(8)
+   screen.move(3,47)
+   screen.text(seq_type_names[data[track].seq_type])
+
+   screen.level(15)
+   screen.rect(33,40,37,10) 
+   screen.fill()
+   screen.level(0)
+   screen.font_size(8)
+   screen.move(34,47)
+   screen.text(data[track].length)
+   screen.move(68,47)
+   screen.text_right("steps")
+
+   screen.level(15)
+   screen.rect(72,40,22,10) 
+   screen.fill()
+   screen.level(0)
+   screen.font_size(8)
+   screen.move(75,47)
+   screen.text("mult")
+
 
 end
+
+
+function ui_set_length(j)
+   screen.level(15)
+   screen.rect(99,0,28,24)
+   screen.fill()
+   screen.level(0)
+   screen.font_size(8)
+   screen.move(100,7)
+   screen.text("track")
+   screen.font_size(21)
+   screen.move(111,22)
+   screen.text_center(j)
+
+   screen.level(15)
+   screen.font_size(8)
+   screen.move(100,33)
+   screen.text("length")
+   
+
+   screen.level(15)
+   screen.rect(99,38,28,26)
+   screen.fill()
+   
+   screen.level(0)
+   screen.font_size(21)
+   screen.move(100,53)
+   screen.text(data[j].length)
+   screen.font_size(8)
+   screen.move(100,60)
+   screen.text("steps")
+end
+
+
+
+function ui_set_type()
+      screen.font_size(8)
+   for track = 1,4 do
+      screen.level(15)
+      screen.rect(99,(track-1) * 16+4 ,28,9)
+      screen.fill()
+      screen.level(0)
+      screen.move(102,(track-1) * 16 + 11)
+      screen.text(seq_type_names[data[track].seq_type])
+   end
+end
+
+function ui_set_mute()
+   screen.level(15)
+   for j=1,4 do
+      if data[j].mute == 1 then
+	 screen.move(90, (j-1) * 16 + 11)
+	 screen.text("muted")
+	 screen.rect(71, (j-1) * 16 + 5, 25,8)
+	 screen.fill()
+	 screen.level(0)
+	 screen.move(90, (j-1) * 16 + 11)
+	 screen.text("m")
+	 screen.level(15)
+--	 screen.rect(44, (j-1) * 16 + 2, 72,13)
+	 screen.rect(4, (j-1) * 16 + 2, 112,13)
+	 screen.stroke()
+	 screen.move(30, (j-1) * 16 + 15)
+	 screen.font_size(21)
+	 screen.text(j)
+	 screen.font_size(8)
+	 screen.move(5, (j-1) * 16 + 11)
+	 screen.text("track")
+      else
+	 screen.level(15)
+	 --	 screen.rect(44, (j-1) * 16 + 2, 55,13)
+	 screen.rect(4, (j-1) * 16 + 2, 112,13)
+	 screen.fill()
+	 screen.level(0)
+	 screen.move(30, (j-1) * 16 + 15)
+	 screen.font_size(21)
+	 screen.text(j)
+	 screen.font_size(8)
+	 screen.move(5, (j-1) * 16 + 11)
+	 screen.text("track")
+	 screen.move(45, (j-1) * 16 + 11)
+	 screen.text("active")
+	 screen.rect(71, (j-1) * 16 + 5, 25,8)
+	 screen.fill()
+	 screen.level(15)
+	 screen.move(90, (j-1) * 16 + 11)
+	 screen.text("x")
+      end
+   end
+--   screen.level(15)
+--   screen.rect(99,0,28,60)
+--   screen.fill()
+end
+
+function ui_set_mult()
+   screen.level(15)
+   screen.rect(99,0,28,60)
+   screen.fill()
+
+   
+end
+
+
 
 
 
@@ -512,9 +678,9 @@ function ui_highlight_mode()
 end
 function ui_crow_disconnected()
    if math.floor(clock.get_beats()) %4  == 1 then
-         screen.display_png("home/we/dust/code/dmon/locker/crow_disconnected_2.png", 0, 0)
+      screen.display_png("home/we/dust/code/locker/lib/crow_disconnected_2.png", 0, 0)
    else
-      screen.display_png("home/we/dust/code/dmon/locker/crow_disconnected_1.png", 0, 0)
+      screen.display_png("home/we/dust/code/locker/lib/crow_disconnected_1.png", 0, 0)
    end
    screen.level(13)
    screen.move(0,20)
